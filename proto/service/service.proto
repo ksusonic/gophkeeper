@@ -1,0 +1,30 @@
+syntax = "proto3";
+package service;
+
+option go_package = "github.com/ksusonic/gophkeeper/proto/service";
+
+import "proto/secret/secret.proto";
+
+service DataService {
+  rpc SetSecret(SetSecretRequest) returns (SetSecretResponse) {}
+  rpc GetSecret(GetSecretRequest) returns (GetSecretResponse) {}
+}
+
+message SetSecretRequest {
+  secret.Secret Data = 1;
+}
+
+message SetSecretResponse {
+  int32 Status = 1;
+  string Error = 2;
+}
+
+message GetSecretRequest {
+  string Name = 1;
+}
+
+message GetSecretResponse {
+  int32 Status = 1;
+  secret.Secret Data = 2;
+  string Error = 3;
+}
