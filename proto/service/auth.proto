@@ -1,7 +1,7 @@
 syntax = "proto3";
-package auth;
+package service;
 
-option go_package = "github.com/ksusonic/gophkeeper/proto/auth";
+option go_package = "github.com/ksusonic/gophkeeper/proto/service";
 
 service AuthService {
   rpc Register(RegisterRequest) returns (RegisterResponse) {}
