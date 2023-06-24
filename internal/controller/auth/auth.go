@@ -6,13 +6,8 @@ import (
 	servicepb "github.com/ksusonic/gophkeeper/proto/service"
 )
 
-type DB interface {
-	RegisterUser()
-	GetUser()
-}
-
 type Controller struct {
-	db DB
+	userStorage UserStorage
 }
 
 func (c *Controller) Register(ctx context.Context, email, password string) (*servicepb.RegisterResponse, error) {

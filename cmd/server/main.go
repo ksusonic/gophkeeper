@@ -11,6 +11,7 @@ import (
 	"github.com/ksusonic/gophkeeper/internal/db"
 	"github.com/ksusonic/gophkeeper/internal/logging"
 	"github.com/ksusonic/gophkeeper/internal/server"
+
 	"github.com/mborders/logmatic"
 )
 
@@ -49,7 +50,6 @@ func runServer(ctx context.Context, cfg *config.Config, logger logging.Logger) e
 	srv := server.NewGrpcServer(&cfg.Server, logger)
 
 	go srv.ListenAndServe(cfg.Server.Address)
-	logger.Info("grpcServer listening at %v", cfg.Server.Address)
 
 	<-ctx.Done()
 	logger.Info("caught stop signal")

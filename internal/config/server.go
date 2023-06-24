@@ -3,7 +3,7 @@ package config
 import (
 	"flag"
 
-	"github.com/caarlos0/env/v7"
+	"github.com/caarlos0/env/v8"
 )
 
 const (
@@ -13,7 +13,7 @@ const (
 
 type Config struct {
 	Server    ServerConfig
-	DebugMode bool
+	DebugMode bool `env:"DEBUG"`
 }
 
 type ServerConfig struct {

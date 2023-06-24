@@ -38,6 +38,7 @@ func (s *GrpcServer) ListenAndServe(address string) {
 		s.logger.Fatal("Cannot listen: %v", err)
 	}
 
+	s.logger.Info("GRPC server Listening at %v", lis.Addr())
 	if err := s.srv.Serve(lis); err != nil {
 		s.logger.Fatal("Failed to serve: %v", err)
 	}

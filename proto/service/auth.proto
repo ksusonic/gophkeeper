@@ -11,7 +11,7 @@ service AuthService {
 // Register
 
 message RegisterRequest {
-  string Email = 1;
+  string Login = 1;
   string Password = 2;
 }
 
@@ -23,7 +23,7 @@ message RegisterResponse {
 // Login
 
 message LoginRequest {
-  string Email = 1;
+  string Login = 1;
   string Password = 2;
 }
 

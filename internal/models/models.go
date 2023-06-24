@@ -11,7 +11,7 @@ var AllModels = []interface{}{
 
 type User struct {
 	gorm.Model
-	Login        string `gorm:"not null;unique"`
+	Username     string `gorm:"not null;unique"`
 	PasswordHash string `gorm:"not null"`
 
 	Secrets []Secret

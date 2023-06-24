@@ -25,11 +25,11 @@ func (a *AuthControllerGrpc) Name() string {
 }
 
 func (a *AuthControllerGrpc) Register(ctx context.Context, request *servicepb.RegisterRequest) (*servicepb.RegisterResponse, error) {
-	return a.controller.Register(ctx, request.GetEmail(), request.GetPassword())
+	return a.controller.Register(ctx, request.GetLogin(), request.GetPassword())
 }
 
 func (a *AuthControllerGrpc) Login(ctx context.Context, request *servicepb.LoginRequest) (*servicepb.LoginResponse, error) {
-	return a.controller.Login(ctx, request.GetEmail(), request.GetPassword())
+	return a.controller.Login(ctx, request.GetLogin(), request.GetPassword())
 }
 
 type SecretControllerGrpc struct {
@@ -53,6 +53,6 @@ func (s *SecretControllerGrpc) GetSecret(ctx context.Context, request *servicepb
 	return s.controller.GetSecret(ctx, request.GetName())
 }
 
-func (s *SecretControllerGrpc) GetAllSecrets(ctx context.Context, empty *emptypb.Empty) (*servicepb.GetAllSecretsResponse, error) {
+func (s *SecretControllerGrpc) GetAllSecrets(ctx context.Context, _ *emptypb.Empty) (*servicepb.GetAllSecretsResponse, error) {
 	return s.controller.GetAllSecrets(ctx)
 }
