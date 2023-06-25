@@ -7,11 +7,11 @@ import (
 	"google.golang.org/grpc"
 )
 
-func TestAuthControllerGrpc_RegisterService(t *testing.T) {
+func TestSecretControllerGrpc_RegisterService(t *testing.T) {
 	srv := grpc.NewServer()
-	a := &AuthControllerGrpc{}
+	a := &SecretControllerGrpc{}
 	a.RegisterService(srv)
 
-	_, ok := srv.GetServiceInfo()["service.AuthService"]
+	_, ok := srv.GetServiceInfo()["service.SecretService"]
 	assert.True(t, ok, "server not found in registered")
 }
