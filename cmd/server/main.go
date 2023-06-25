@@ -58,8 +58,7 @@ func runServer(ctx context.Context, cfg *config.Config, logger logging.Logger) e
 	srv := server.NewGrpcServer(
 		&cfg.Server,
 		logger,
-		authInterceptor.AuthFunc,
-		authInterceptor.FilterFunc,
+		authInterceptor,
 	)
 
 	srv.RegisterController(authController)

@@ -2,32 +2,24 @@ package grpc
 
 import (
 	"context"
-	"strings"
 
-	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/auth"
-	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/selector"
 	"github.com/ksusonic/gophkeeper/internal/crypta"
+
+	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors"
+	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/auth"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
 type Interceptor struct {
-	jwtManager *crypta.JWTManager
-	filterFunc selector.MatchFunc
+	jwtManager         *crypta.JWTManager
+	ignoreServiceNames []string
 }
 
 func NewAuthInterceptor(jwtManager *crypta.JWTManager, ignoreServiceNames ...string) *Interceptor {
 	return &Interceptor{
-		jwtManager: jwtManager,
-		filterFunc: func(ctx context.Context, fullMethod string) bool {
-			fullMethod = strings.TrimPrefix(fullMethod, "/")
-			for _, servieName := range ignoreServiceNames {
-				if strings.HasPrefix(fullMethod, servieName) {
-					return false
-				}
-			}
-			return true
-		},
+		jwtManager:         jwtManager,
+		ignoreServiceNames: ignoreServiceNames,
 	}
 }
 
@@ -45,6 +37,11 @@ func (i *Interceptor) AuthFunc(ctx context.Context) (context.Context, error) {
 	return ctx, nil
 }
 
-func (i *Interceptor) FilterFunc(ctx context.Context, fullMethod string) bool {
-	return i.filterFunc(ctx, fullMethod)
+func (i *Interceptor) Match(_ context.Context, fullMethod interceptors.CallMeta) bool {
+	for _, servieName := range i.ignoreServiceNames {
+		if fullMethod.Service == servieName {
+			return false
+		}
+	}
+	return true
 }

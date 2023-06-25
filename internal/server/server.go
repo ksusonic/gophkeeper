@@ -1,16 +1,22 @@
 package server
 
 import (
+	"context"
 	"net"
 	"runtime/debug"
-
-	"github.com/ksusonic/gophkeeper/internal/config"
-	"github.com/ksusonic/gophkeeper/internal/logging"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/auth"
+	grpclogging "github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/logging"
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/recovery"
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/selector"
+	"github.com/ksusonic/gophkeeper/internal/config"
+	"github.com/ksusonic/gophkeeper/internal/logging"
+	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
+	"go.opentelemetry.io/otel"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -27,22 +33,34 @@ type GrpcServer struct {
 	cfg    *config.ServerConfig
 }
 
+type AuthInterceptor interface {
+	selector.Matcher
+	AuthFunc(ctx context.Context) (context.Context, error)
+}
+
 func NewGrpcServer(
 	cfg *config.ServerConfig,
 	logger logging.Logger,
-	authFunc auth.AuthFunc,
-	needAuthFilter selector.MatchFunc,
+	authInterceptor AuthInterceptor,
 ) *GrpcServer {
+	tp := sdktrace.NewTracerProvider(
+		sdktrace.WithSampler(sdktrace.AlwaysSample()),
+	)
+	otel.SetTracerProvider(tp)
 	return &GrpcServer{
 		srv: grpc.NewServer(
 			grpc.ChainUnaryInterceptor(
-				selector.UnaryServerInterceptor(auth.UnaryServerInterceptor(authFunc), needAuthFilter),
+				otelgrpc.UnaryServerInterceptor(),
+				grpclogging.UnaryServerInterceptor(&InterceptorLogger{logger}, grpclogging.WithFieldsFromContext(traceIDFunction)),
+				selector.UnaryServerInterceptor(auth.UnaryServerInterceptor(authInterceptor.AuthFunc), authInterceptor),
 				recovery.UnaryServerInterceptor(
 					recovery.WithRecoveryHandler(panicRecoveryHandler(logger)),
 				),
 			),
 			grpc.ChainStreamInterceptor(
-				selector.StreamServerInterceptor(auth.StreamServerInterceptor(authFunc), needAuthFilter),
+				otelgrpc.StreamServerInterceptor(),
+				grpclogging.StreamServerInterceptor(&InterceptorLogger{logger}, grpclogging.WithFieldsFromContext(traceIDFunction)),
+				selector.StreamServerInterceptor(auth.StreamServerInterceptor(authInterceptor.AuthFunc), authInterceptor),
 				recovery.StreamServerInterceptor(
 					recovery.WithRecoveryHandler(panicRecoveryHandler(logger)),
 				),
@@ -79,4 +97,51 @@ func panicRecoveryHandler(logger logging.Logger) func(p any) error {
 		logger.Error("errorID: %s got panic: %v, stack: %s", errorID, p, debug.Stack())
 		return status.Errorf(codes.Internal, "internal error id: %s", errorID)
 	}
+}
+
+type InterceptorLogger struct {
+	logger logging.Logger
+}
+
+func (i *InterceptorLogger) Log(ctx context.Context, level grpclogging.Level, msg string, fields ...any) {
+	messageBuilder := func(msg string, fields ...any) (format string) {
+		s := strings.Builder{}
+		s.Grow(len(msg) + len(fields)*10) // grow on average message len
+
+		s.WriteString(msg + " {")
+		fieldIsKey := true
+		for i := range fields {
+			if fieldIsKey {
+				s.WriteString(`"%s"=`)
+			} else {
+				s.WriteString(`"%v"`)
+			}
+			if i != len(fields)-1 {
+				s.WriteRune(' ')
+			}
+			fieldIsKey = !fieldIsKey
+		}
+		s.WriteRune('}')
+		return s.String()
+	}
+
+	switch level {
+	case grpclogging.LevelDebug:
+		i.logger.Debug(messageBuilder(msg, fields...), fields...)
+	case grpclogging.LevelInfo:
+		i.logger.Info(messageBuilder(msg, fields...), fields...)
+	case grpclogging.LevelWarn:
+		i.logger.Warn(messageBuilder(msg, fields...), fields...)
+	case grpclogging.LevelError:
+		i.logger.Error(messageBuilder(msg, fields...), fields...)
+	default:
+		i.logger.Info(messageBuilder(msg, fields...), fields...)
+	}
+}
+
+func traceIDFunction(ctx context.Context) grpclogging.Fields {
+	if span := trace.SpanContextFromContext(ctx); span.IsSampled() {
+		return grpclogging.Fields{"traceID", span.TraceID().String()}
+	}
+	return nil
 }
