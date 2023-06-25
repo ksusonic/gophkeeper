@@ -37,6 +37,9 @@ func NewGrpcServer(cfg *config.ServerConfig, logger logging.Logger, authFunc aut
 			),
 			grpc.ChainStreamInterceptor(
 				auth.StreamServerInterceptor(authFunc),
+				recovery.StreamServerInterceptor(
+					recovery.WithRecoveryHandler(panicRecoveryHandler(logger)),
+				),
 			)),
 		cfg:    cfg,
 		logger: logger,

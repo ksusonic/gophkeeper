@@ -13,6 +13,8 @@ import (
 	"google.golang.org/grpc/status"
 )
 
+var loginFailed = status.Error(codes.Unauthenticated, "User does not exists or password is incorrect")
+
 type Controller struct {
 	userStorage UserStorage
 	jwtManager  *crypta.JWTManager
@@ -67,8 +69,6 @@ func (c *Controller) Register(ctx context.Context, username, password string) (*
 }
 
 func (c *Controller) Login(ctx context.Context, username string, password string) (*servicepb.LoginResponse, error) {
-	var loginFailed = status.Error(codes.Unauthenticated, "User does not exists or password is incorrect")
-
 	user, err := c.userStorage.GetUser(ctx, username)
 	if err != nil {
 		if errors.Is(err, models.ErrorNotExists) {

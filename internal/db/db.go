@@ -62,6 +62,11 @@ func (d *DB) SetSecret(ctx context.Context, secret *models.Secret) error {
 	panic("implement me")
 }
 
+func (d *DB) HasSecret(ctx context.Context) {
+	//TODO implement me
+	panic("implement me")
+}
+
 func (d *DB) GetSecret(ctx context.Context, userID, name string) {
 	//TODO implement me
 	panic("implement me")

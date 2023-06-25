@@ -13,22 +13,20 @@ service SecretService {
 }
 
 message SetSecretRequest {
-  secret.Secret Data = 1;
+  secret.Secret Secret = 1 [json_name = "secret"];
 }
 
 message SetSecretResponse {
-  int32 Status = 1;
 }
 
 message GetSecretRequest {
-  string Name = 1;
+  string Name = 1 [json_name = "name"];
 }
 
 message GetSecretResponse {
-  int32 Status = 1;
-  secret.Secret Data = 2;
+  secret.Secret Secret = 1 [json_name = "secret"];
 }
 
 message GetAllSecretsResponse {
-  repeated secret.Secret Data = 1;
+  repeated secret.Secret Secrets = 1 [json_name = "secrets"];
 }

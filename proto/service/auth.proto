@@ -11,21 +11,21 @@ service AuthService {
 // Register
 
 message RegisterRequest {
-  string Login = 1;
-  string Password = 2;
+  string Login = 1 [json_name = "login"];
+  string Password = 2 [json_name = "password"];
 }
 
 message RegisterResponse {
-  string AccessToken = 1;
+  string AccessToken = 1 [json_name = "access_token"];
 }
 
 // Login
 
 message LoginRequest {
-  string Login = 1;
-  string Password = 2;
+  string Login = 1 [json_name = "login"];
+  string Password = 2 [json_name = "password"];
 }
 
 message LoginResponse {
-  string AccessToken = 1;
+  string AccessToken = 1 [json_name = "access_token"];
 }

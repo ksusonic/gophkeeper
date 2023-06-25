@@ -12,6 +12,7 @@ import (
 type Storage interface {
 	SetSecret(ctx context.Context, secret *models.Secret) error
 	GetSecret(ctx context.Context, userID, name string)
+	HasSecret(ctx context.Context)
 }
 
 type Controller struct {
