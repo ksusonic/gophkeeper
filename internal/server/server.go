@@ -10,13 +10,14 @@ import (
 	"github.com/google/uuid"
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/auth"
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/recovery"
+	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/selector"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
 type GrpcController interface {
-	Name() string
+	ServiceName() string
 	RegisterService(srv *grpc.Server)
 }
 
@@ -26,17 +27,22 @@ type GrpcServer struct {
 	cfg    *config.ServerConfig
 }
 
-func NewGrpcServer(cfg *config.ServerConfig, logger logging.Logger, authFunc auth.AuthFunc, controllers ...GrpcController) *GrpcServer {
-	server := &GrpcServer{
+func NewGrpcServer(
+	cfg *config.ServerConfig,
+	logger logging.Logger,
+	authFunc auth.AuthFunc,
+	needAuthFilter selector.MatchFunc,
+) *GrpcServer {
+	return &GrpcServer{
 		srv: grpc.NewServer(
 			grpc.ChainUnaryInterceptor(
-				auth.UnaryServerInterceptor(authFunc),
+				selector.UnaryServerInterceptor(auth.UnaryServerInterceptor(authFunc), needAuthFilter),
 				recovery.UnaryServerInterceptor(
 					recovery.WithRecoveryHandler(panicRecoveryHandler(logger)),
 				),
 			),
 			grpc.ChainStreamInterceptor(
-				auth.StreamServerInterceptor(authFunc),
+				selector.StreamServerInterceptor(auth.StreamServerInterceptor(authFunc), needAuthFilter),
 				recovery.StreamServerInterceptor(
 					recovery.WithRecoveryHandler(panicRecoveryHandler(logger)),
 				),
@@ -44,11 +50,11 @@ func NewGrpcServer(cfg *config.ServerConfig, logger logging.Logger, authFunc aut
 		cfg:    cfg,
 		logger: logger,
 	}
-	for _, controller := range controllers {
-		logger.Info("Registered %s controller", controller.Name())
-		controller.RegisterService(server.srv)
-	}
-	return server
+}
+
+func (s *GrpcServer) RegisterController(controller GrpcController) {
+	s.logger.Info("Registered %s", controller.ServiceName())
+	controller.RegisterService(s.srv)
 }
 
 func (s *GrpcServer) ListenAndServe(address string) {

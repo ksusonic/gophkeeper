@@ -8,9 +8,9 @@ import (
 	"time"
 
 	"github.com/ksusonic/gophkeeper/internal/config"
-	"github.com/ksusonic/gophkeeper/internal/controller"
 	"github.com/ksusonic/gophkeeper/internal/crypta"
 	"github.com/ksusonic/gophkeeper/internal/db"
+	"github.com/ksusonic/gophkeeper/internal/grpc"
 	"github.com/ksusonic/gophkeeper/internal/logging"
 	"github.com/ksusonic/gophkeeper/internal/server"
 
@@ -51,15 +51,19 @@ func runServer(ctx context.Context, cfg *config.Config, logger logging.Logger) e
 
 	jwtManager := crypta.NewJWTManager(cfg.Auth.SecretKey, cfg.Auth.TokenTTL)
 
-	authController := controller.NewAuthControllerGrpc(storage, jwtManager, logger)
-	secretController := controller.NewSecretControllerGrpc(storage, logger)
+	authController := grpc.NewAuthControllerGrpc(storage, jwtManager, logger)
+	authInterceptor := grpc.NewAuthInterceptor(jwtManager, authController.ServiceName())
+	secretController := grpc.NewSecretControllerGrpc(storage, logger)
+
 	srv := server.NewGrpcServer(
 		&cfg.Server,
 		logger,
-		authController.AuthFunc(),
-		authController,
-		secretController,
+		authInterceptor.AuthFunc,
+		authInterceptor.FilterFunc,
 	)
+
+	srv.RegisterController(authController)
+	srv.RegisterController(secretController)
 
 	go srv.ListenAndServe(cfg.Server.Address)
 
