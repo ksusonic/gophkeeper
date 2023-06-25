@@ -1,28 +1,68 @@
 package db
 
 import (
-	"log"
+	"context"
+	"errors"
+	"time"
 
+	"github.com/ksusonic/gophkeeper/internal/logging"
 	"github.com/ksusonic/gophkeeper/internal/models"
+
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
 
+const defaultTimeout = time.Second * 3
+
 type DB struct {
-	DB *gorm.DB
+	orm    *gorm.DB
+	logger logging.Logger
 }
 
-func NewDB(dsn string) (*DB, error) {
-	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
+func NewDB(dsn string, logger logging.Logger) (*DB, error) {
+	orm, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
 	if err != nil {
-		log.Fatal("Error connecting to the database...", err)
+		logger.Fatal("Error connecting to the database...", err)
 	}
 
-	if err := db.AutoMigrate(models.AllModels...); err != nil {
-		log.Fatalf("Error in automigrations: %v", err)
+	if err := orm.AutoMigrate(models.AllModels...); err != nil {
+		logger.Fatal("Error in automigrations: %v", err)
 	}
+	logger.Info("db automigration ok")
 
 	return &DB{
-		DB: db,
+		orm: orm,
 	}, nil
+}
+
+func (d *DB) SaveUser(ctx context.Context, user *models.User) models.StorageQueryResult {
+	tCtx, timeout := context.WithTimeout(ctx, defaultTimeout)
+	defer timeout()
+
+	return d.orm.WithContext(tCtx).Save(user).Error
+}
+
+func (d *DB) GetUser(ctx context.Context, username string) (*models.User, models.StorageQueryResult) {
+	tCtx, timeout := context.WithTimeout(ctx, defaultTimeout)
+	defer timeout()
+
+	user := &models.User{}
+	tx := d.orm.WithContext(tCtx).Where("username = ?", username).Take(user)
+	if tx.Error != nil {
+		if errors.Is(tx.Error, gorm.ErrRecordNotFound) {
+			return nil, models.ErrorNotExists
+		}
+		return nil, tx.Error
+	}
+	return user, nil
+}
+
+func (d *DB) SetSecret(ctx context.Context, secret *models.Secret) error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (d *DB) GetSecret(ctx context.Context, userID, name string) {
+	//TODO implement me
+	panic("implement me")
 }

@@ -2,10 +2,17 @@ package server
 
 import (
 	"net"
+	"runtime/debug"
 
 	"github.com/ksusonic/gophkeeper/internal/config"
 	"github.com/ksusonic/gophkeeper/internal/logging"
+
+	"github.com/google/uuid"
+	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/auth"
+	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/recovery"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 type GrpcController interface {
@@ -19,9 +26,18 @@ type GrpcServer struct {
 	cfg    *config.ServerConfig
 }
 
-func NewGrpcServer(cfg *config.ServerConfig, logger logging.Logger, controllers ...GrpcController) *GrpcServer {
+func NewGrpcServer(cfg *config.ServerConfig, logger logging.Logger, authFunc auth.AuthFunc, controllers ...GrpcController) *GrpcServer {
 	server := &GrpcServer{
-		srv:    grpc.NewServer(),
+		srv: grpc.NewServer(
+			grpc.ChainUnaryInterceptor(
+				auth.UnaryServerInterceptor(authFunc),
+				recovery.UnaryServerInterceptor(
+					recovery.WithRecoveryHandler(panicRecoveryHandler(logger)),
+				),
+			),
+			grpc.ChainStreamInterceptor(
+				auth.StreamServerInterceptor(authFunc),
+			)),
 		cfg:    cfg,
 		logger: logger,
 	}
@@ -46,4 +62,12 @@ func (s *GrpcServer) ListenAndServe(address string) {
 
 func (s *GrpcServer) GracefulStop() {
 	s.srv.GracefulStop()
+}
+
+func panicRecoveryHandler(logger logging.Logger) func(p any) error {
+	return func(p any) error {
+		errorID := uuid.New()
+		logger.Error("errorID: %s got panic: %v, stack: %s", errorID, p, debug.Stack())
+		return status.Errorf(codes.Internal, "internal error id: %s", errorID)
+	}
 }

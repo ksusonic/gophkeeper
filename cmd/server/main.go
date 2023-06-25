@@ -8,6 +8,8 @@ import (
 	"time"
 
 	"github.com/ksusonic/gophkeeper/internal/config"
+	"github.com/ksusonic/gophkeeper/internal/controller"
+	"github.com/ksusonic/gophkeeper/internal/crypta"
 	"github.com/ksusonic/gophkeeper/internal/db"
 	"github.com/ksusonic/gophkeeper/internal/logging"
 	"github.com/ksusonic/gophkeeper/internal/server"
@@ -42,12 +44,22 @@ func getLogger(debug bool) logging.Logger {
 }
 
 func runServer(ctx context.Context, cfg *config.Config, logger logging.Logger) error {
-	/*storage*/
-	_, err := db.NewDB(cfg.Server.DatabaseDsn)
+	storage, err := db.NewDB(cfg.Server.DatabaseDsn, logger)
 	if err != nil {
 		logger.Fatal("db error: %v", err)
 	}
-	srv := server.NewGrpcServer(&cfg.Server, logger)
+
+	jwtManager := crypta.NewJWTManager(cfg.Auth.SecretKey, cfg.Auth.TokenTTL)
+
+	authController := controller.NewAuthControllerGrpc(storage, jwtManager, logger)
+	secretController := controller.NewSecretControllerGrpc(storage, logger)
+	srv := server.NewGrpcServer(
+		&cfg.Server,
+		logger,
+		authController.AuthFunc(),
+		authController,
+		secretController,
+	)
 
 	go srv.ListenAndServe(cfg.Server.Address)
 

@@ -3,17 +3,32 @@ package controller
 import (
 	"context"
 
+	grpcAuth "github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/auth"
 	"github.com/ksusonic/gophkeeper/internal/controller/auth"
 	"github.com/ksusonic/gophkeeper/internal/controller/secret"
+	"github.com/ksusonic/gophkeeper/internal/crypta"
+	"github.com/ksusonic/gophkeeper/internal/logging"
 	servicepb "github.com/ksusonic/gophkeeper/proto/service"
 	"google.golang.org/protobuf/types/known/emptypb"
 
 	"google.golang.org/grpc"
 )
 
+var whitelistedAuthPaths = map[string]bool{
+	"/service.AuthService/": true,
+}
+
 type AuthControllerGrpc struct {
-	controller auth.Controller
+	controller  *auth.Controller
+	interceptor *Interceptor
 	servicepb.UnimplementedAuthServiceServer
+}
+
+func NewAuthControllerGrpc(userStorage auth.UserStorage, jwtManager *crypta.JWTManager, logger logging.Logger) *AuthControllerGrpc {
+	return &AuthControllerGrpc{
+		controller:  auth.NewController(userStorage, jwtManager, logger),
+		interceptor: NewAuthInterceptor(jwtManager, whitelistedAuthPaths),
+	}
 }
 
 func (a *AuthControllerGrpc) RegisterService(srv *grpc.Server) {
@@ -22,6 +37,10 @@ func (a *AuthControllerGrpc) RegisterService(srv *grpc.Server) {
 
 func (a *AuthControllerGrpc) Name() string {
 	return "Authentication grpc-controller"
+}
+
+func (a *AuthControllerGrpc) AuthFunc() grpcAuth.AuthFunc {
+	return a.interceptor.AuthFunc
 }
 
 func (a *AuthControllerGrpc) Register(ctx context.Context, request *servicepb.RegisterRequest) (*servicepb.RegisterResponse, error) {
@@ -33,8 +52,14 @@ func (a *AuthControllerGrpc) Login(ctx context.Context, request *servicepb.Login
 }
 
 type SecretControllerGrpc struct {
-	controller secret.SecretsController
+	controller *secret.Controller
 	servicepb.UnimplementedSecretServiceServer
+}
+
+func NewSecretControllerGrpc(userStorage secret.Storage, logger logging.Logger) *SecretControllerGrpc {
+	return &SecretControllerGrpc{
+		controller: secret.NewController(userStorage, logger),
+	}
 }
 
 func (s *SecretControllerGrpc) RegisterService(srv *grpc.Server) {
