@@ -19,9 +19,9 @@ func TestConvertToJson(t *testing.T) {
 	})
 
 	secret := &datapb.Secret{
-		Name:  "test",
-		Meta:  meta,
-		Value: &datapb.Secret_Text{},
+		Name:       "test",
+		Meta:       meta,
+		SecretData: &datapb.Secret_Data{Variant: &datapb.Secret_Data_Any{}},
 	}
 
 	marshalled, err := protojson.Marshal(secret)

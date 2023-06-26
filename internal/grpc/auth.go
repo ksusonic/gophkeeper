@@ -7,6 +7,7 @@ import (
 	"github.com/ksusonic/gophkeeper/internal/crypta"
 	"github.com/ksusonic/gophkeeper/internal/logging"
 	servicepb "github.com/ksusonic/gophkeeper/proto/service"
+
 	"google.golang.org/grpc"
 )
 

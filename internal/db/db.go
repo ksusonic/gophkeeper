@@ -58,16 +58,26 @@ func (d *DB) GetUser(ctx context.Context, username string) (*models.User, models
 }
 
 func (d *DB) SetSecret(ctx context.Context, secret *models.Secret) error {
-	//TODO implement me
-	panic("implement me")
+	tCtx, timeout := context.WithTimeout(ctx, defaultTimeout)
+	defer timeout()
+
+	tx := d.orm.WithContext(tCtx).Save(secret)
+	return tx.Error
 }
 
-func (d *DB) HasSecret(ctx context.Context) {
-	//TODO implement me
-	panic("implement me")
+func (d *DB) UserHasSecret(ctx context.Context, userID string, name string) (bool, error) {
+	tCtx, timeout := context.WithTimeout(ctx, defaultTimeout)
+	defer timeout()
+
+	var count int64
+	tx := d.orm.WithContext(tCtx).Model(models.Secret{}).Where("user_id = ? AND name = ?", userID, name).Count(&count)
+	if tx.Error != nil {
+		return false, tx.Error
+	}
+	return count > 0, nil
 }
 
-func (d *DB) GetSecret(ctx context.Context, userID, name string) {
+func (d *DB) GetSecret(ctx context.Context, userID string, name string) (*models.Secret, error) {
 	//TODO implement me
 	panic("implement me")
 }

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/ksusonic/gophkeeper/internal/config"
 	"github.com/ksusonic/gophkeeper/internal/models"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -14,21 +15,21 @@ const (
 )
 
 type JWTManager struct {
-	secretKey     string
-	tokenDuration time.Duration
+	saltKey  string
+	tokenTTL time.Duration
 }
 
-func NewJWTManager(secretKey string, tokenDuration time.Duration) *JWTManager {
+func NewJWTManager(config config.AuthConfig) *JWTManager {
 	return &JWTManager{
-		secretKey:     secretKey,
-		tokenDuration: tokenDuration,
+		saltKey:  config.SaltKey,
+		tokenTTL: config.TokenTTL,
 	}
 }
 
 func (manager *JWTManager) Generate(user *models.User) (string, error) {
 	claims := models.UserClaims{
 		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(manager.tokenDuration)),
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(manager.tokenTTL)),
 			Issuer:    Issuer,
 		},
 		UserID:   user.ID,
@@ -36,7 +37,7 @@ func (manager *JWTManager) Generate(user *models.User) (string, error) {
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	return token.SignedString([]byte(manager.secretKey))
+	return token.SignedString([]byte(manager.saltKey))
 }
 
 func (manager *JWTManager) Verify(accessToken string) (*models.UserClaims, error) {
@@ -49,7 +50,7 @@ func (manager *JWTManager) Verify(accessToken string) (*models.UserClaims, error
 				return nil, fmt.Errorf("unexpected token signing method")
 			}
 
-			return []byte(manager.secretKey), nil
+			return []byte(manager.saltKey), nil
 		},
 	)
 

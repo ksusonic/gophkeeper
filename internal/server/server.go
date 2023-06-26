@@ -47,8 +47,15 @@ func NewGrpcServer(
 		sdktrace.WithSampler(sdktrace.AlwaysSample()),
 	)
 	otel.SetTracerProvider(tp)
+
+	tlsCredentials, err := loadTLSCredentials(cfg.TLSCertsPath)
+	if err != nil {
+		logger.Fatal("cannot load TLS credentials: ", err)
+	}
+
 	return &GrpcServer{
 		srv: grpc.NewServer(
+			grpc.Creds(tlsCredentials),
 			grpc.ChainUnaryInterceptor(
 				otelgrpc.UnaryServerInterceptor(),
 				grpclogging.UnaryServerInterceptor(&InterceptorLogger{logger}, grpclogging.WithFieldsFromContext(traceIDFunction)),
@@ -103,7 +110,7 @@ type InterceptorLogger struct {
 	logger logging.Logger
 }
 
-func (i *InterceptorLogger) Log(ctx context.Context, level grpclogging.Level, msg string, fields ...any) {
+func (i *InterceptorLogger) Log(_ context.Context, level grpclogging.Level, msg string, fields ...any) {
 	messageBuilder := func(msg string, fields ...any) (format string) {
 		s := strings.Builder{}
 		s.Grow(len(msg) + len(fields)*10) // grow on average message len

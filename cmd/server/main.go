@@ -49,11 +49,14 @@ func runServer(ctx context.Context, cfg *config.Config, logger logging.Logger) e
 		logger.Fatal("db error: %v", err)
 	}
 
-	jwtManager := crypta.NewJWTManager(cfg.Auth.SecretKey, cfg.Auth.TokenTTL)
+	jwtManager := crypta.NewJWTManager(cfg.Auth)
 
 	authController := grpc.NewAuthControllerGrpc(storage, jwtManager, logger)
 	authInterceptor := grpc.NewAuthInterceptor(jwtManager, authController.ServiceName())
-	secretController := grpc.NewSecretControllerGrpc(storage, logger)
+	secretController, err := grpc.NewSecretControllerGrpc(cfg.Secrets, storage, logger)
+	if err != nil {
+		logger.Fatal("Could not create grpcSecretController: %v", err)
+	}
 
 	srv := server.NewGrpcServer(
 		&cfg.Server,

@@ -2,7 +2,9 @@ package grpc
 
 import (
 	"context"
+	"fmt"
 
+	"github.com/ksusonic/gophkeeper/internal/config"
 	"github.com/ksusonic/gophkeeper/internal/controller/secret"
 	"github.com/ksusonic/gophkeeper/internal/logging"
 	servicepb "github.com/ksusonic/gophkeeper/proto/service"
@@ -16,14 +18,16 @@ type SecretControllerGrpc struct {
 	servicepb.UnimplementedSecretServiceServer
 }
 
-func (s *SecretControllerGrpc) ServiceName() string {
-	return servicepb.AuthService_ServiceDesc.ServiceName
+func NewSecretControllerGrpc(cfg config.SecretsConfig, userStorage secret.Storage, logger logging.Logger) (*SecretControllerGrpc, error) {
+	controller, err := secret.NewController(cfg, userStorage, logger)
+	if err != nil {
+		return nil, fmt.Errorf("error creating SecretController: %w", err)
+	}
+	return &SecretControllerGrpc{controller: controller}, nil
 }
 
-func NewSecretControllerGrpc(userStorage secret.Storage, logger logging.Logger) *SecretControllerGrpc {
-	return &SecretControllerGrpc{
-		controller: secret.NewController(userStorage, logger),
-	}
+func (s *SecretControllerGrpc) ServiceName() string {
+	return servicepb.AuthService_ServiceDesc.ServiceName
 }
 
 func (s *SecretControllerGrpc) RegisterService(srv *grpc.Server) {
@@ -31,13 +35,25 @@ func (s *SecretControllerGrpc) RegisterService(srv *grpc.Server) {
 }
 
 func (s *SecretControllerGrpc) SetSecret(ctx context.Context, request *servicepb.SetSecretRequest) (*servicepb.SetSecretResponse, error) {
-	return s.controller.SetSecret(ctx, request.GetSecret())
+	claims, err := retrieveClaims(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return s.controller.SetSecret(ctx, claims, request.GetSecret())
 }
 
 func (s *SecretControllerGrpc) GetSecret(ctx context.Context, request *servicepb.GetSecretRequest) (*servicepb.GetSecretResponse, error) {
-	return s.controller.GetSecret(ctx, request.GetName())
+	claims, err := retrieveClaims(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return s.controller.GetSecret(ctx, claims, request.GetName())
 }
 
 func (s *SecretControllerGrpc) GetAllSecrets(ctx context.Context, _ *emptypb.Empty) (*servicepb.GetAllSecretsResponse, error) {
-	return s.controller.GetAllSecrets(ctx)
+	claims, err := retrieveClaims(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return s.controller.GetAllSecrets(ctx, claims)
 }
