@@ -35,14 +35,14 @@ func NewDB(dsn string, logger logging.Logger) (*DB, error) {
 	}, nil
 }
 
-func (d *DB) SaveUser(ctx context.Context, user *models.User) models.StorageQueryResult {
+func (d *DB) SaveUser(ctx context.Context, user *models.User) error {
 	tCtx, timeout := context.WithTimeout(ctx, defaultTimeout)
 	defer timeout()
 
 	return d.orm.WithContext(tCtx).Save(user).Error
 }
 
-func (d *DB) GetUser(ctx context.Context, username string) (*models.User, models.StorageQueryResult) {
+func (d *DB) GetUser(ctx context.Context, username string) (*models.User, error) {
 	tCtx, timeout := context.WithTimeout(ctx, defaultTimeout)
 	defer timeout()
 
@@ -50,7 +50,7 @@ func (d *DB) GetUser(ctx context.Context, username string) (*models.User, models
 	tx := d.orm.WithContext(tCtx).Where("username = ?", username).Take(user)
 	if tx.Error != nil {
 		if errors.Is(tx.Error, gorm.ErrRecordNotFound) {
-			return nil, models.ErrorNotExists
+			return nil, nil
 		}
 		return nil, tx.Error
 	}
@@ -65,19 +65,24 @@ func (d *DB) SetSecret(ctx context.Context, secret *models.Secret) error {
 	return tx.Error
 }
 
-func (d *DB) UserHasSecret(ctx context.Context, userID string, name string) (bool, error) {
+func (d *DB) GetSecret(ctx context.Context, userID string, name string) (*models.Secret, error) {
 	tCtx, timeout := context.WithTimeout(ctx, defaultTimeout)
 	defer timeout()
 
-	var count int64
-	tx := d.orm.WithContext(tCtx).Model(models.Secret{}).Where("user_id = ? AND name = ?", userID, name).Count(&count)
+	secret := &models.Secret{}
+	tx := d.orm.WithContext(tCtx).Where("user_id = ? AND name = ?", userID, name).Take(secret)
 	if tx.Error != nil {
-		return false, tx.Error
+		if errors.Is(tx.Error, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, tx.Error
 	}
-	return count > 0, nil
+	return secret, nil
 }
 
-func (d *DB) GetSecret(ctx context.Context, userID string, name string) (*models.Secret, error) {
-	//TODO implement me
-	panic("implement me")
+func (d *DB) UpdateSecret(ctx context.Context, secret *models.Secret) error {
+	tCtx, timeout := context.WithTimeout(ctx, defaultTimeout)
+	defer timeout()
+
+	return d.orm.WithContext(tCtx).Save(secret).Error
 }

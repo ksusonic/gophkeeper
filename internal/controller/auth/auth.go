@@ -2,13 +2,11 @@ package auth
 
 import (
 	"context"
-	"errors"
 
 	"github.com/ksusonic/gophkeeper/internal/crypta"
 	"github.com/ksusonic/gophkeeper/internal/logging"
 	"github.com/ksusonic/gophkeeper/internal/models"
 	servicepb "github.com/ksusonic/gophkeeper/proto/service"
-	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -30,7 +28,11 @@ func NewController(userStorage UserStorage, jwtManager *crypta.JWTManager, logge
 }
 
 func (c *Controller) Register(ctx context.Context, username, password string) (*servicepb.RegisterResponse, error) {
-	if user, err := c.userStorage.GetUser(ctx, username); err != nil && !errors.Is(err, models.ErrorNotExists) {
+	if len(username) == 0 || len(password) == 0 {
+		return nil, status.Error(codes.InvalidArgument, "empty username or password")
+	}
+
+	if user, err := c.userStorage.GetUser(ctx, username); err != nil {
 		c.logger.Error("unexpected error from storage: %v", err)
 		return nil, status.Error(codes.Internal, "unexpected error storage processing")
 	} else if user != nil {
@@ -47,20 +49,14 @@ func (c *Controller) Register(ctx context.Context, username, password string) (*
 		PasswordHash: hashedPassword,
 	}
 
-	var token string
-	errGroup := errgroup.Group{}
-	errGroup.Go(func() error {
-		return c.userStorage.SaveUser(ctx, user)
-	})
-	errGroup.Go(func() (err error) {
-		token, err = c.jwtManager.Generate(user)
-		return err
-	})
+	err = c.userStorage.SaveUser(ctx, user)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "could not save user: %v", err)
+	}
 
-	// no matter - error during saving user or generating
-	if err := errGroup.Wait(); err != nil {
-		c.logger.Error("got error during creation user: %v", err)
-		return nil, status.Error(codes.Internal, "unexpected error during creation user")
+	token, err := c.jwtManager.Generate(user)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "could not generate access token: %v", err)
 	}
 
 	return &servicepb.RegisterResponse{
@@ -69,13 +65,17 @@ func (c *Controller) Register(ctx context.Context, username, password string) (*
 }
 
 func (c *Controller) Login(ctx context.Context, username string, password string) (*servicepb.LoginResponse, error) {
+	if len(username) == 0 || len(password) == 0 {
+		return nil, status.Error(codes.InvalidArgument, "empty username or password")
+	}
+
 	user, err := c.userStorage.GetUser(ctx, username)
 	if err != nil {
-		if errors.Is(err, models.ErrorNotExists) {
-			return nil, loginFailed
-		}
 		return nil, status.Error(codes.Internal, "unexpected error storage processing")
+	} else if user == nil {
+		return nil, loginFailed
 	}
+
 	if IsCorrectPassword(user, password) {
 		token, err := c.jwtManager.Generate(user)
 		if err != nil {

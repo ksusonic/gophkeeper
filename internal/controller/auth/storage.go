@@ -7,8 +7,6 @@ import (
 )
 
 type UserStorage interface {
-	SaveUser(ctx context.Context, user *models.User) models.StorageQueryResult
-	GetUser(ctx context.Context, username string) (*models.User, models.StorageQueryResult)
+	SaveUser(ctx context.Context, user *models.User) error
+	GetUser(ctx context.Context, username string) (*models.User, error)
 }
-
-type UserNotFound error

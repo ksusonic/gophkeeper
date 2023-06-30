@@ -1,4 +1,4 @@
-package proto2json
+package testproto2json
 
 import (
 	"encoding/json"
