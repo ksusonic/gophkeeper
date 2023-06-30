@@ -6,7 +6,6 @@ import (
 	"os"
 
 	"github.com/ksusonic/gophkeeper/internal/config"
-
 	"github.com/urfave/cli/v2"
 )
 
@@ -16,13 +15,20 @@ var (
 )
 
 func main() {
-	_, err := config.LoadClientStorage()
+	cfg, err := config.NewClientConfigWithStorage()
 	if err != nil {
 		log.Fatalf("could not load config: %v", err)
 	}
+	defer func(cfg *config.ClientConfigWithStorage) {
+		err := cfg.Save()
+		if err != nil {
+			fmt.Printf("Sorry, could not save storage: %v\n", err)
+		}
+	}(cfg)
 
 	app := &cli.App{
-		Usage: "Keeps your secrets in the air!",
+		EnableBashCompletion: true,
+		Usage:                "Keeps your secrets in the air!",
 		Commands: []*cli.Command{
 			{
 				Name:    "version",
