@@ -9,9 +9,9 @@ import (
 	"github.com/ksusonic/gophkeeper/internal/logging"
 	"github.com/ksusonic/gophkeeper/internal/models"
 	datapb "github.com/ksusonic/gophkeeper/proto/data"
-	"golang.org/x/sync/errgroup"
-
 	servicepb "github.com/ksusonic/gophkeeper/proto/service"
+
+	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
