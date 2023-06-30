@@ -80,6 +80,15 @@ func (d *DB) GetSecret(ctx context.Context, userID string, name string) (*models
 	return secret, nil
 }
 
+func (d *DB) GetAllSecrets(ctx context.Context, userID string) ([]models.Secret, error) {
+	tCtx, timeout := context.WithTimeout(ctx, defaultTimeout)
+	defer timeout()
+
+	var secrets []models.Secret
+	tx := d.orm.WithContext(tCtx).Where("user_id = ?", userID).Find(&secrets)
+	return secrets, tx.Error
+}
+
 func (d *DB) UpdateSecret(ctx context.Context, secret *models.Secret) error {
 	tCtx, timeout := context.WithTimeout(ctx, defaultTimeout)
 	defer timeout()

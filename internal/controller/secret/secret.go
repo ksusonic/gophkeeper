@@ -9,9 +9,9 @@ import (
 	"github.com/ksusonic/gophkeeper/internal/logging"
 	"github.com/ksusonic/gophkeeper/internal/models"
 	datapb "github.com/ksusonic/gophkeeper/proto/data"
-	servicepb "github.com/ksusonic/gophkeeper/proto/service"
-	"google.golang.org/protobuf/types/known/structpb"
+	"golang.org/x/sync/errgroup"
 
+	servicepb "github.com/ksusonic/gophkeeper/proto/service"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
@@ -20,6 +20,7 @@ import (
 type Storage interface {
 	SetSecret(ctx context.Context, secret *models.Secret) error
 	GetSecret(ctx context.Context, userID, name string) (*models.Secret, error)
+	GetAllSecrets(ctx context.Context, userID string) ([]models.Secret, error)
 	UpdateSecret(ctx context.Context, secret *models.Secret) error
 }
 
@@ -98,32 +99,39 @@ func (c *Controller) GetSecret(ctx context.Context, claims *models.UserClaims, n
 		return nil, status.Errorf(codes.NotFound, "secret %s not found in users secrets", name)
 	}
 
-	decryptedData, err := c.crypta.Decrypt(secret.Data)
+	decryptedSecret, err := crypta.DecryptSecret(c.crypta, secret)
 	if err != nil {
-		c.logger.Error("could not decrypt %s secret secretData: %v", name, err)
-		return nil, status.Error(codes.Internal, "could not decrypt secretData. sorry :-(")
-	}
-	secretData := &datapb.Secret_Data{}
-	if err = proto.Unmarshal(decryptedData, secretData); err != nil {
-		c.logger.Error("could not unmarshall %s secretData: %v", name, err)
-		return nil, status.Error(codes.Internal, "unexpected unmarshalling error")
-	}
-	meta, err := structpb.NewStruct(secret.Meta)
-	if err != nil {
-		c.logger.Error("could not create struct from map: %v", err)
-		return nil, status.Error(codes.Internal, "unexpected error")
+		c.logger.Error("could not decrypt secret: %v", err)
+		return nil, status.Errorf(codes.Internal, "unexpected error")
 	}
 
 	return &servicepb.GetSecretResponse{
-		Secret: &datapb.Secret{
-			Name:       secret.Name,
-			Meta:       meta,
-			SecretData: secretData,
-		},
+		Secret: decryptedSecret,
 	}, nil
 }
 
 func (c *Controller) GetAllSecrets(ctx context.Context, claims *models.UserClaims) (*servicepb.GetAllSecretsResponse, error) {
-	//TODO implement me
-	panic("implement me")
+	secrets, err := c.storage.GetAllSecrets(ctx, claims.UserID)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "could not get secrets: %v", err)
+	}
+	var protoSecrets = make([]*datapb.Secret, len(secrets))
+	eg := errgroup.Group{}
+	for i := range secrets {
+		f := func(i int) func() (err error) {
+			return func() (err error) {
+				protoSecrets[i], err = crypta.DecryptSecret(c.crypta, &secrets[i])
+				return err
+			}
+		}
+		eg.Go(f(i))
+	}
+	if err := eg.Wait(); err != nil {
+		c.logger.Error("could not decrypt secret: %v", err)
+		return nil, status.Error(codes.Internal, "internal error")
+	}
+
+	return &servicepb.GetAllSecretsResponse{
+		Secrets: protoSecrets,
+	}, nil
 }
