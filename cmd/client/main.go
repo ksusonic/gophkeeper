@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 
+	"github.com/ksusonic/gophkeeper/internal/cliclient"
 	"github.com/ksusonic/gophkeeper/internal/config"
 	"github.com/urfave/cli/v2"
 )
@@ -19,10 +20,15 @@ func main() {
 	if err != nil {
 		log.Fatalf("could not load config: %v", err)
 	}
-	defer func(cfg *config.ClientConfigWithStorage) {
-		err := cfg.Save()
+	storage, err := cliclient.NewStorage(cfg.StoragePath, !cfg.Debug)
+	if err != nil {
+		log.Fatalf("could not load storage: %v", err)
+	}
+
+	defer func(cfg *config.ClientConfig) {
+		err := storage.Save()
 		if err != nil {
-			fmt.Printf("Sorry, could not save storage: %v\n", err)
+			log.Printf("Sorry, could not save storage: %v\n", err)
 		}
 	}(cfg)
 
