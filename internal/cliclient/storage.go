@@ -3,6 +3,7 @@ package cliclient
 import (
 	"fmt"
 	"os"
+	"sync"
 
 	clipb "github.com/ksusonic/gophkeeper/proto/cli"
 
@@ -10,15 +11,14 @@ import (
 )
 
 type Storage struct {
-	Value *clipb.Storage
 	path  string
+	mutex sync.Mutex
+
+	*clipb.Storage
 }
 
 func NewStorage(path string, ignoreErrors bool) (*Storage, error) {
-	storage := &Storage{
-		Value: &clipb.Storage{},
-		path:  path,
-	}
+	storage := &Storage{path: path, Storage: nil}
 	file, _ := os.ReadFile(path)
 	if file != nil {
 		value := &clipb.Storage{}
@@ -27,16 +27,31 @@ func NewStorage(path string, ignoreErrors bool) (*Storage, error) {
 			if ignoreErrors {
 				return storage, nil
 			}
-			return nil, fmt.Errorf("could not unmarshall proto: %v", err)
+			return nil, fmt.Errorf("could not unmarshall storage proto: %v", err)
 		}
-		storage.Value = value
+		storage.Storage = value
 		return storage, nil
 	}
 	return storage, nil
 }
 
+func (c *Storage) GetValue() *clipb.Storage {
+	if c.Storage == nil {
+		return &clipb.Storage{}
+	}
+	return c.Storage
+}
+
+func (c *Storage) SetValue(storage *clipb.Storage) {
+	c.mutex.Lock()
+	c.Storage = storage
+	c.mutex.Unlock()
+}
+
 func (c *Storage) Save() error {
-	marshal, err := proto.Marshal(c.Value)
+	c.mutex.Lock()
+	marshal, err := proto.Marshal(c.Storage)
+	c.mutex.Unlock()
 	if err != nil {
 		return err
 	}

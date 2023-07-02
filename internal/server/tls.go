@@ -8,7 +8,7 @@ import (
 
 func loadTLSCredentials(certPath string) (credentials.TransportCredentials, error) {
 	// Load server's certificate and private key
-	serverCert, err := tls.LoadX509KeyPair(certPath+"cert.pem", certPath+"key.pem")
+	serverCert, err := tls.LoadX509KeyPair(certPath+"server-cert.pem", certPath+"server-key.pem")
 	if err != nil {
 		return nil, err
 	}

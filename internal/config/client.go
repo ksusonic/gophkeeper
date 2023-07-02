@@ -5,8 +5,8 @@ import (
 )
 
 type ClientConfig struct {
-	ServerURL   string `env:"SERVER" envDefault:":3000"`
-	CertPath    string `env:"CERT" envDefault:"cert/server-tls/ca-cert.pem"`
+	ServerURL   string `env:"SERVER" envDefault:":3200"`
+	CertPath    string `env:"CERT" envDefault:"cert/server-tls"`
 	StoragePath string `env:"STORAGE" envDefault:"/tmp/gophkeeper-storage"`
 	Debug       bool   `env:"DEBUG" envDefault:"false"`
 }

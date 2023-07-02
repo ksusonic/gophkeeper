@@ -1,11 +1,11 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"os"
 
 	"github.com/ksusonic/gophkeeper/internal/cliclient"
+	"github.com/ksusonic/gophkeeper/internal/client"
 	"github.com/ksusonic/gophkeeper/internal/config"
 	"github.com/urfave/cli/v2"
 )
@@ -13,47 +13,52 @@ import (
 var (
 	Version = "dev"
 	Date    = "unknown"
+
+	out = log.New(os.Stderr, "", 0)
 )
 
 func main() {
 	cfg, err := config.NewClientConfigWithStorage()
 	if err != nil {
-		log.Fatalf("could not load config: %v", err)
+		out.Fatalf("could not load config: %v", err)
 	}
 	storage, err := cliclient.NewStorage(cfg.StoragePath, !cfg.Debug)
 	if err != nil {
-		log.Fatalf("could not load storage: %v", err)
+		out.Fatalf("could not load storage: %v", err)
 	}
 
 	defer func(cfg *config.ClientConfig) {
 		err := storage.Save()
 		if err != nil {
-			log.Printf("Sorry, could not save storage: %v\n", err)
+			out.Printf("Sorry, could not save storage: %v\n", err)
 		}
 	}(cfg)
 
+	grpc, err := client.NewGrpcClient(cfg.ServerURL, cfg.CertPath)
+	if err != nil {
+		log.Fatalf("error creating grpc client: %v", err)
+	}
+
+	cli.VersionPrinter = func(cCtx *cli.Context) {
+		out.Printf("version: '%s' from %s\n", cCtx.App.Version, Date)
+	}
+
+	initCommand := &cli.Command{
+		Name:    "init",
+		Aliases: []string{"i"},
+		Usage:   "register or login to system",
+		Action: func(ctx *cli.Context) error {
+			return cliclient.NewHelper(out, grpc, storage).Init(ctx)
+		},
+	}
 	app := &cli.App{
+		Name:    "gophkeeper",
+		Version: Version,
+		Usage:   "Keeps your secrets in the air!",
+
 		EnableBashCompletion: true,
-		Usage:                "Keeps your secrets in the air!",
-		Commands: []*cli.Command{
-			{
-				Name:    "version",
-				Aliases: []string{"v"},
-				Usage:   "get version",
-				Action: func(cCtx *cli.Context) error {
-					fmt.Printf("version: '%s' from %s\n", Version, Date)
-					return nil
-				},
-			},
-			{
-				Name:    "init",
-				Aliases: []string{"i"},
-				Usage:   "register or login to system",
-				Action: func(cCtx *cli.Context) error {
-					// TODO register or login to system
-					return nil
-				},
-			},
+		Commands: cli.Commands{
+			initCommand,
 			{
 				Name:    "add",
 				Aliases: []string{"a", "ad"},
@@ -99,9 +104,18 @@ func main() {
 				},
 			},
 		},
+		Action: func(ctx *cli.Context) error {
+			if storage.GetToken() == "" {
+				out.Println("Welcome to GophKeeper!")
+				return initCommand.Run(ctx)
+			}
+			out.Println("You are logged in")
+			// TODO: check if token is valid
+			return cli.ShowAppHelp(ctx)
+		},
 	}
 
 	if err := app.Run(os.Args); err != nil {
-		log.Fatal(err)
+		out.Fatal(err)
 	}
 }
