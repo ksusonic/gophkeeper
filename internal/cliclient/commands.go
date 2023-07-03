@@ -122,12 +122,7 @@ func (h *Helper) addSecret(cCtx *cli.Context, data *datapb.Secret_Data) error {
 		},
 	})
 	if err != nil {
-		s, ok := status.FromError(err)
-		if ok && s.Code() == codes.Unauthenticated {
-			h.storage.Token = ""
-			return fmt.Errorf("auth token was cleared: %s", s.Message())
-		}
-		return err
+		return h.tryProcessResponse(err)
 	}
 	h.out.Printf("Secret %s successfully added\n", name)
 	return nil
@@ -175,24 +170,14 @@ func (h *Helper) AddCard(cCtx *cli.Context) error {
 }
 
 func (h *Helper) GetSecret(cCtx *cli.Context) error {
-	name := h.askData("Enter response name")
+	name := h.askData("Enter secret name")
 
 	ctx, cancel := context.WithTimeout(cCtx.Context, DefaultTimeout)
 	defer cancel()
 
 	response, err := h.serverClient.GetSecret(ctx, &servicepb.GetSecretRequest{Name: name})
 	if err != nil {
-		s, ok := status.FromError(err)
-		if ok {
-			switch s.Code() {
-			case codes.Unauthenticated:
-				h.storage.Token = ""
-				return fmt.Errorf("auth token was cleared: %s", s.Message())
-			case codes.NotFound:
-				return fmt.Errorf("not found response: %s", s.Message())
-			}
-		}
-		return fmt.Errorf("unexpected response: %v", err)
+		return h.tryProcessResponse(err)
 	}
 	h.out.Printf("Your secret:\n%s\n", protojson.Format(response.GetSecret()))
 
@@ -220,4 +205,33 @@ func (h *Helper) GetAllSecrets(cCtx *cli.Context) error {
 	h.out.Println(builder.String())
 
 	return nil
+}
+
+func (h *Helper) RemoveSecret(cCtx *cli.Context) error {
+	name := h.askData("Enter secret name")
+
+	ctx, cancel := context.WithTimeout(cCtx.Context, DefaultTimeout)
+	defer cancel()
+
+	_, err := h.serverClient.RemoveSecret(ctx, &servicepb.RemoveSecretRequest{Name: name})
+	if err != nil {
+		return h.tryProcessResponse(err)
+	}
+
+	h.out.Printf("Secret %s was deleted", name)
+	return nil
+}
+
+func (h *Helper) tryProcessResponse(err error) error {
+	s, ok := status.FromError(err)
+	if ok {
+		switch s.Code() {
+		case codes.Unauthenticated:
+			h.storage.Token = ""
+			return fmt.Errorf("auth token was cleared: %s", s.Message())
+		case codes.NotFound:
+			return fmt.Errorf("not found response: %s", s.Message())
+		}
+	}
+	return fmt.Errorf("unexpected response error: %v", err)
 }

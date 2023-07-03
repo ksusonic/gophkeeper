@@ -61,7 +61,7 @@ func (d *DB) SetSecret(ctx context.Context, secret *models.Secret) error {
 	tCtx, timeout := context.WithTimeout(ctx, defaultTimeout)
 	defer timeout()
 
-	tx := d.orm.WithContext(tCtx).Save(secret)
+	tx := d.orm.WithContext(tCtx).Create(secret)
 	return tx.Error
 }
 
@@ -94,4 +94,13 @@ func (d *DB) UpdateSecret(ctx context.Context, secret *models.Secret) error {
 	defer timeout()
 
 	return d.orm.WithContext(tCtx).Save(secret).Error
+}
+
+func (d *DB) RemoveSecret(ctx context.Context, userID, name string) (bool, error) {
+	tCtx, timeout := context.WithTimeout(ctx, defaultTimeout)
+	defer timeout()
+
+	secret := models.Secret{}
+	tx := d.orm.WithContext(tCtx).Where("user_id = ? AND name = ?", userID, name).Delete(&secret)
+	return tx.RowsAffected > 0, tx.Error
 }

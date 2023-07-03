@@ -22,6 +22,7 @@ type Storage interface {
 	GetSecret(ctx context.Context, userID, name string) (*models.Secret, error)
 	GetAllSecrets(ctx context.Context, userID string) ([]models.Secret, error)
 	UpdateSecret(ctx context.Context, secret *models.Secret) error
+	RemoveSecret(ctx context.Context, userID, name string) (bool, error)
 }
 
 type Controller struct {
@@ -64,8 +65,8 @@ func (c *Controller) SetSecret(ctx context.Context, claims *models.UserClaims, s
 		// create new
 		err := c.storage.SetSecret(ctx, &models.Secret{
 			UserID: claims.UserID,
-			Name:   secret.Name,
-			Meta:   secret.Meta.AsMap(),
+			Name:   secret.GetName(),
+			Meta:   secret.GetMeta().AsMap(),
 			Data:   encryptedData,
 		})
 		if err != nil {
@@ -134,4 +135,16 @@ func (c *Controller) GetAllSecrets(ctx context.Context, claims *models.UserClaim
 	return &servicepb.GetAllSecretsResponse{
 		Secrets: protoSecrets,
 	}, nil
+}
+
+func (c *Controller) RemoveSecret(ctx context.Context, claims *models.UserClaims, name string) (*servicepb.RemoveSecretResponse, error) {
+	found, err := c.storage.RemoveSecret(ctx, claims.UserID, name)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "could not get secret: %v", err)
+	}
+	if !found {
+		return nil, status.Errorf(codes.NotFound, "secret %s not found and not deleted", name)
+	}
+
+	return &servicepb.RemoveSecretResponse{}, nil
 }

@@ -1,6 +1,8 @@
 package models
 
 import (
+	"time"
+
 	"gorm.io/datatypes"
 	"gorm.io/gorm"
 )
@@ -20,11 +22,13 @@ type User struct {
 }
 
 type Secret struct {
-	gorm.Model
+	ID      uint   `gorm:"primarykey"`
 	Name    string `gorm:"index"`
 	Version int32  `gorm:"default:1"`
 	Meta    datatypes.JSONMap
 	Data    []byte
 
-	UserID string `gorm:"type:uuid"`
+	CreatedAt time.Time
+	UpdatedAt time.Time
+	UserID    string `gorm:"type:uuid"`
 }

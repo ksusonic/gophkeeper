@@ -106,7 +106,7 @@ func main() {
 				Aliases: []string{"d", "delete"},
 				Usage:   "delete secret",
 				Before:  storage.LoginInterceptor,
-				//Action:  cliClient.RemoveSecret,
+				Action:  cliClient.RemoveSecret,
 			},
 		},
 	}

@@ -9,6 +9,7 @@ service SecretService {
   rpc SetSecret(SetSecretRequest) returns (SetSecretResponse) {}
   rpc GetSecret(GetSecretRequest) returns (GetSecretResponse) {}
   rpc GetAllSecrets(GetAllSecretsRequest) returns (GetAllSecretsResponse) {}
+  rpc RemoveSecret(RemoveSecretRequest) returns (RemoveSecretResponse) {}
 }
 
 message SetSecretRequest {
@@ -31,4 +32,11 @@ message GetAllSecretsRequest {
 
 message GetAllSecretsResponse {
   repeated secret.Secret Secrets = 1 [json_name = "secrets"];
+}
+
+message RemoveSecretRequest {
+  string Name = 1 [json_name = "name"];
+}
+
+message RemoveSecretResponse {
 }

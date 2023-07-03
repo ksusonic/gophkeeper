@@ -22,6 +22,7 @@ const (
 	SecretService_SetSecret_FullMethodName     = "/service.SecretService/SetSecret"
 	SecretService_GetSecret_FullMethodName     = "/service.SecretService/GetSecret"
 	SecretService_GetAllSecrets_FullMethodName = "/service.SecretService/GetAllSecrets"
+	SecretService_RemoveSecret_FullMethodName  = "/service.SecretService/RemoveSecret"
 )
 
 // SecretServiceClient is the client API for SecretService service.
@@ -31,6 +32,7 @@ type SecretServiceClient interface {
 	SetSecret(ctx context.Context, in *SetSecretRequest, opts ...grpc.CallOption) (*SetSecretResponse, error)
 	GetSecret(ctx context.Context, in *GetSecretRequest, opts ...grpc.CallOption) (*GetSecretResponse, error)
 	GetAllSecrets(ctx context.Context, in *GetAllSecretsRequest, opts ...grpc.CallOption) (*GetAllSecretsResponse, error)
+	RemoveSecret(ctx context.Context, in *RemoveSecretRequest, opts ...grpc.CallOption) (*RemoveSecretResponse, error)
 }
 
 type secretServiceClient struct {
@@ -68,6 +70,15 @@ func (c *secretServiceClient) GetAllSecrets(ctx context.Context, in *GetAllSecre
 	return out, nil
 }
 
+func (c *secretServiceClient) RemoveSecret(ctx context.Context, in *RemoveSecretRequest, opts ...grpc.CallOption) (*RemoveSecretResponse, error) {
+	out := new(RemoveSecretResponse)
+	err := c.cc.Invoke(ctx, SecretService_RemoveSecret_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // SecretServiceServer is the server API for SecretService service.
 // All implementations must embed UnimplementedSecretServiceServer
 // for forward compatibility
@@ -75,6 +86,7 @@ type SecretServiceServer interface {
 	SetSecret(context.Context, *SetSecretRequest) (*SetSecretResponse, error)
 	GetSecret(context.Context, *GetSecretRequest) (*GetSecretResponse, error)
 	GetAllSecrets(context.Context, *GetAllSecretsRequest) (*GetAllSecretsResponse, error)
+	RemoveSecret(context.Context, *RemoveSecretRequest) (*RemoveSecretResponse, error)
 	mustEmbedUnimplementedSecretServiceServer()
 }
 
@@ -90,6 +102,9 @@ func (UnimplementedSecretServiceServer) GetSecret(context.Context, *GetSecretReq
 }
 func (UnimplementedSecretServiceServer) GetAllSecrets(context.Context, *GetAllSecretsRequest) (*GetAllSecretsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetAllSecrets not implemented")
+}
+func (UnimplementedSecretServiceServer) RemoveSecret(context.Context, *RemoveSecretRequest) (*RemoveSecretResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RemoveSecret not implemented")
 }
 func (UnimplementedSecretServiceServer) mustEmbedUnimplementedSecretServiceServer() {}
 
@@ -158,6 +173,24 @@ func _SecretService_GetAllSecrets_Handler(srv interface{}, ctx context.Context, 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _SecretService_RemoveSecret_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RemoveSecretRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SecretServiceServer).RemoveSecret(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: SecretService_RemoveSecret_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SecretServiceServer).RemoveSecret(ctx, req.(*RemoveSecretRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // SecretService_ServiceDesc is the grpc.ServiceDesc for SecretService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -176,6 +209,10 @@ var SecretService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetAllSecrets",
 			Handler:    _SecretService_GetAllSecrets_Handler,
+		},
+		{
+			MethodName: "RemoveSecret",
+			Handler:    _SecretService_RemoveSecret_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

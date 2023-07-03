@@ -56,3 +56,11 @@ func (s *SecretControllerGrpc) GetAllSecrets(ctx context.Context, _ *servicepb.G
 	}
 	return s.controller.GetAllSecrets(ctx, claims)
 }
+
+func (s *SecretControllerGrpc) RemoveSecret(ctx context.Context, request *servicepb.RemoveSecretRequest) (*servicepb.RemoveSecretResponse, error) {
+	claims, err := retrieveClaims(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return s.controller.RemoveSecret(ctx, claims, request.GetName())
+}
