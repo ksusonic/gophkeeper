@@ -51,7 +51,6 @@ func (s *Storage) Save() error {
 	if err != nil {
 		return err
 	}
-	fmt.Println("Save storage ok")
 	return nil
 }
 

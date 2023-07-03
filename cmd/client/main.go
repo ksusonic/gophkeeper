@@ -91,19 +91,13 @@ func main() {
 				Aliases: []string{"g"},
 				Usage:   "get secret",
 				Before:  storage.LoginInterceptor,
-				Action: func(context *cli.Context) error {
-					// TODO get secret
-					return nil
-				},
+				Action:  cliClient.GetSecret,
 				Subcommands: []*cli.Command{
 					{
 						Name:    "all",
 						Aliases: []string{"a"},
 						Usage:   "get all secret",
-						Action: func(context *cli.Context) error {
-							// TODO get all secrets
-							return nil
-						},
+						Action:  cliClient.GetAllSecrets,
 					},
 				},
 			},
@@ -112,10 +106,7 @@ func main() {
 				Aliases: []string{"d", "delete"},
 				Usage:   "delete secret",
 				Before:  storage.LoginInterceptor,
-				Action: func(context *cli.Context) error {
-					// TODO delete secret
-					return nil
-				},
+				//Action:  cliClient.RemoveSecret,
 			},
 		},
 	}

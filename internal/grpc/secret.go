@@ -10,7 +10,6 @@ import (
 	servicepb "github.com/ksusonic/gophkeeper/proto/service"
 
 	"google.golang.org/grpc"
-	"google.golang.org/protobuf/types/known/emptypb"
 )
 
 type SecretControllerGrpc struct {
@@ -50,7 +49,7 @@ func (s *SecretControllerGrpc) GetSecret(ctx context.Context, request *servicepb
 	return s.controller.GetSecret(ctx, claims, request.GetName())
 }
 
-func (s *SecretControllerGrpc) GetAllSecrets(ctx context.Context, _ *emptypb.Empty) (*servicepb.GetAllSecretsResponse, error) {
+func (s *SecretControllerGrpc) GetAllSecrets(ctx context.Context, _ *servicepb.GetAllSecretsRequest) (*servicepb.GetAllSecretsResponse, error) {
 	claims, err := retrieveClaims(ctx)
 	if err != nil {
 		return nil, err

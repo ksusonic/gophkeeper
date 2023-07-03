@@ -4,12 +4,11 @@ package service;
 option go_package = "github.com/ksusonic/gophkeeper/proto/service";
 
 import "proto/data/secret.proto";
-import "google/protobuf/empty.proto";
 
 service SecretService {
   rpc SetSecret(SetSecretRequest) returns (SetSecretResponse) {}
   rpc GetSecret(GetSecretRequest) returns (GetSecretResponse) {}
-  rpc GetAllSecrets(google.protobuf.Empty) returns (GetAllSecretsResponse) {}
+  rpc GetAllSecrets(GetAllSecretsRequest) returns (GetAllSecretsResponse) {}
 }
 
 message SetSecretRequest {
@@ -25,6 +24,9 @@ message GetSecretRequest {
 
 message GetSecretResponse {
   secret.Secret Secret = 1 [json_name = "secret"];
+}
+
+message GetAllSecretsRequest {
 }
 
 message GetAllSecretsResponse {

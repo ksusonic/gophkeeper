@@ -13,7 +13,7 @@ const (
 	DefaultAddress        = ":3200"
 	DefaultDatabaseDsn    = "postgresql://localhost:5432/gophkeeper"
 	DefaultSecretKey      = "do-not-use-this-in-production!"
-	DefaultTokenTTL       = time.Minute * 15
+	DefaultTokenTTL       = time.Minute * 30
 	DefaultTLSPath        = "cert/server-tls/"
 	DefaultSecretKeysPath = "cert/secret-encryption/"
 )

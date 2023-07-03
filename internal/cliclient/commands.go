@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/ksusonic/gophkeeper/internal/client"
@@ -12,6 +13,7 @@ import (
 	servicepb "github.com/ksusonic/gophkeeper/proto/service"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/types/known/anypb"
 	"google.golang.org/protobuf/types/known/structpb"
 
@@ -19,7 +21,10 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
-const ProductServiceName = "GophKeeper"
+const (
+	ProductServiceName = "GophKeeper"
+	DefaultTimeout     = time.Second * 2
+)
 
 type Helper struct {
 	out          *log.Logger
@@ -77,7 +82,7 @@ func (h *Helper) Register(cCtx *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	fmt.Printf("Successfully registered, %s!\n", username)
+	h.out.Printf("Successfully registered, %s!\n", username)
 	h.storage.Token = register.AccessToken
 	return nil
 }
@@ -95,7 +100,7 @@ func (h *Helper) Login(cCtx *cli.Context) error {
 		return h.Login(cCtx)
 	}
 	h.storage.Token = login.AccessToken
-	fmt.Printf("Successfully logged in as %s\n", username)
+	h.out.Printf("Successfully logged in as %s\n", username)
 	return nil
 }
 
@@ -106,7 +111,7 @@ func (h *Helper) addSecret(cCtx *cli.Context, data *datapb.Secret_Data) error {
 		return fmt.Errorf("cannot process metadata: %w", err)
 	}
 
-	ctx, cancel := context.WithTimeout(cCtx.Context, time.Second*1)
+	ctx, cancel := context.WithTimeout(cCtx.Context, DefaultTimeout)
 	defer cancel()
 
 	_, err = h.serverClient.SetSecret(ctx, &servicepb.SetSecretRequest{
@@ -132,8 +137,8 @@ func (h *Helper) AddPassword(cCtx *cli.Context) error {
 	login := h.askData("Enter login/email from external service account")
 	password := h.askPrivate("Enter password")
 	data := &datapb.Secret_Data{Variant: &datapb.Secret_Data_Authentication{Authentication: &datapb.AuthenticationData{
-		Login:       login,
-		RawPassword: password,
+		Login:    login,
+		Password: password,
 	}}}
 	return h.addSecret(cCtx, data)
 }
@@ -167,4 +172,52 @@ func (h *Helper) AddCard(cCtx *cli.Context) error {
 			ExpirationDate: expirationData,
 		}}},
 	)
+}
+
+func (h *Helper) GetSecret(cCtx *cli.Context) error {
+	name := h.askData("Enter response name")
+
+	ctx, cancel := context.WithTimeout(cCtx.Context, DefaultTimeout)
+	defer cancel()
+
+	response, err := h.serverClient.GetSecret(ctx, &servicepb.GetSecretRequest{Name: name})
+	if err != nil {
+		s, ok := status.FromError(err)
+		if ok {
+			switch s.Code() {
+			case codes.Unauthenticated:
+				h.storage.Token = ""
+				return fmt.Errorf("auth token was cleared: %s", s.Message())
+			case codes.NotFound:
+				return fmt.Errorf("not found response: %s", s.Message())
+			}
+		}
+		return fmt.Errorf("unexpected response: %v", err)
+	}
+	h.out.Printf("Your secret:\n%s\n", protojson.Format(response.GetSecret()))
+
+	return nil
+}
+
+func (h *Helper) GetAllSecrets(cCtx *cli.Context) error {
+	ctx, cancel := context.WithTimeout(cCtx.Context, DefaultTimeout)
+	defer cancel()
+
+	response, err := h.serverClient.GetAllSecrets(ctx, &servicepb.GetAllSecretsRequest{})
+	if err != nil {
+		return fmt.Errorf("unexpected response: %v", err)
+	}
+
+	h.out.Printf("You have %d secrets\n", len(response.GetSecrets()))
+
+	builder := strings.Builder{}
+	for i, secret := range response.GetSecrets() {
+		builder.WriteString(protojson.Format(secret))
+		if i < len(response.GetSecrets())-1 {
+			builder.WriteRune('\n')
+		}
+	}
+	h.out.Println(builder.String())
+
+	return nil
 }
