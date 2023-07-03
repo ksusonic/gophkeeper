@@ -1,6 +1,7 @@
 package cliclient
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -61,4 +62,22 @@ func (h *Helper) askPrivate(question string) string {
 		h.out.Fatal(err)
 	}
 	return answer
+}
+
+// askJSON - returns map. Not required input
+func (h *Helper) askJSON(question string) (m map[string]interface{}) {
+	_, err := h.ui.Ask(
+		question,
+		&input.Options{
+			Default: "{}",
+			Loop:    true,
+			ValidateFunc: func(s string) error {
+				return json.Unmarshal([]byte(s), &m)
+			},
+		},
+	)
+	if err != nil {
+		h.out.Fatal(err)
+	}
+	return nil
 }

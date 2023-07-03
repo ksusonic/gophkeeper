@@ -1,62 +1,47 @@
 package cliclient
 
 import (
+	"context"
 	"fmt"
 	"os"
-	"sync"
 
+	"github.com/grpc-ecosystem/go-grpc-middleware/v2/metadata"
 	clipb "github.com/ksusonic/gophkeeper/proto/cli"
+	grpcMetadata "google.golang.org/grpc/metadata"
 
+	"github.com/urfave/cli/v2"
 	"google.golang.org/protobuf/proto"
 )
 
 type Storage struct {
-	path  string
-	mutex sync.Mutex
+	path string
 
-	*clipb.Storage
+	clipb.Storage
 }
 
 func NewStorage(path string, ignoreErrors bool) (*Storage, error) {
-	storage := &Storage{path: path, Storage: nil}
+	storage := &Storage{path: path}
 	file, _ := os.ReadFile(path)
 	if file != nil {
-		value := &clipb.Storage{}
-		err := proto.Unmarshal(file, value)
+		err := proto.Unmarshal(file, &storage.Storage)
 		if err != nil {
 			if ignoreErrors {
 				return storage, nil
 			}
 			return nil, fmt.Errorf("could not unmarshall storage proto: %v", err)
 		}
-		storage.Storage = value
 		return storage, nil
 	}
 	return storage, nil
 }
 
-func (c *Storage) GetValue() *clipb.Storage {
-	if c.Storage == nil {
-		return &clipb.Storage{}
-	}
-	return c.Storage
-}
-
-func (c *Storage) SetValue(storage *clipb.Storage) {
-	c.mutex.Lock()
-	c.Storage = storage
-	c.mutex.Unlock()
-}
-
-func (c *Storage) Save() error {
-	c.mutex.Lock()
-	marshal, err := proto.Marshal(c.Storage)
-	c.mutex.Unlock()
+func (s *Storage) Save() error {
+	marshal, err := proto.Marshal(&s.Storage)
 	if err != nil {
 		return err
 	}
 
-	file, err := os.OpenFile(c.path, os.O_CREATE|os.O_WRONLY, 0666)
+	file, err := os.OpenFile(s.path, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0755)
 	if err != nil {
 		return fmt.Errorf("could not create temp dir for file: %w", err)
 	}
@@ -66,5 +51,28 @@ func (c *Storage) Save() error {
 	if err != nil {
 		return err
 	}
+	fmt.Println("Save storage ok")
+	return nil
+}
+
+func (s *Storage) TokenIsValidError(_ context.Context) error {
+	if len(s.Token) == 0 {
+		return fmt.Errorf("access token is empty")
+	}
+	// TODO: validate handler
+	return nil
+}
+
+func (s *Storage) TokenIsValid(ctx context.Context) bool {
+	return s.TokenIsValidError(ctx) == nil
+}
+
+func (s *Storage) LoginInterceptor(ctx *cli.Context) error {
+	if err := s.TokenIsValidError(ctx.Context); err != nil {
+		return fmt.Errorf("you need to be logged in: %w", err)
+	}
+
+	md := grpcMetadata.Pairs("authorization", fmt.Sprintf("%s %v", "bearer", s.Token))
+	ctx.Context = metadata.MD(md).ToOutgoing(ctx.Context)
 	return nil
 }

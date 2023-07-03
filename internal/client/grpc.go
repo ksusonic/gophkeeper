@@ -16,7 +16,6 @@ func NewGrpcClient(address, tlsPath string) (*GrpcClient, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	conn, err := grpc.Dial(address, grpc.WithTransportCredentials(tlsConfig))
 	if err != nil {
 		return nil, err
