@@ -4,8 +4,8 @@ import (
 	"log"
 	"os"
 
-	"github.com/ksusonic/gophkeeper/internal/cliclient"
 	"github.com/ksusonic/gophkeeper/internal/client"
+	"github.com/ksusonic/gophkeeper/internal/clihelper"
 	"github.com/ksusonic/gophkeeper/internal/config"
 
 	"github.com/urfave/cli/v2"
@@ -23,7 +23,7 @@ func main() {
 	if err != nil {
 		out.Fatalf("could not load config: %v", err)
 	}
-	storage, err := cliclient.NewStorage(cfg.StoragePath, !cfg.Debug)
+	storage, err := clihelper.NewStorage(cfg.StoragePath, !cfg.Debug)
 	if err != nil {
 		out.Fatalf("could not load storage: %v", err)
 	}
@@ -31,7 +31,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("error creating grpc client: %v", err)
 	}
-	cliClient := cliclient.NewHelper(out, grpc, storage)
+	cliClient := clihelper.NewHelper(out, grpc, storage)
 
 	cli.VersionPrinter = func(cCtx *cli.Context) {
 		out.Printf("version: '%s' from %s\n", cCtx.App.Version, Date)
@@ -110,7 +110,7 @@ func main() {
 			},
 		},
 	}
-	defer func(storage *cliclient.Storage) {
+	defer func(storage *clihelper.Storage) {
 		if err := storage.Save(); err != nil {
 			out.Fatalf("cannot save storage: %v", err)
 		}

@@ -1,4 +1,4 @@
-package cliclient
+package clihelper
 
 import (
 	"context"

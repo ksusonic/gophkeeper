@@ -13,6 +13,7 @@ import (
 
 var loginFailed = status.Error(codes.Unauthenticated, "User does not exists or password is incorrect")
 
+// Controller for user auth
 type Controller struct {
 	userStorage UserStorage
 	jwtManager  *crypta.JWTManager
@@ -27,6 +28,7 @@ func NewController(userStorage UserStorage, jwtManager *crypta.JWTManager, logge
 	}
 }
 
+// Register by login and password
 func (c *Controller) Register(ctx context.Context, username, password string) (*servicepb.RegisterResponse, error) {
 	if len(username) == 0 || len(password) == 0 {
 		return nil, status.Error(codes.InvalidArgument, "empty username or password")
@@ -64,6 +66,7 @@ func (c *Controller) Register(ctx context.Context, username, password string) (*
 	}, nil
 }
 
+// Login by login and password
 func (c *Controller) Login(ctx context.Context, username string, password string) (*servicepb.LoginResponse, error) {
 	if len(username) == 0 || len(password) == 0 {
 		return nil, status.Error(codes.InvalidArgument, "empty username or password")

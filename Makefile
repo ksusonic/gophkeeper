@@ -6,4 +6,3 @@ server:
 	go run cmd/server/main.go
 client:
 	go build -ldflags="-X 'main.Version=in-makefile' -X 'main.Date=$(shell date)'" -o gophkeeper cmd/client/main.go
-	./gophkeeper

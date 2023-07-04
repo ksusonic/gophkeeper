@@ -1,14 +1,14 @@
-package cliclient
+package clihelper
 
 import (
 	"context"
 	"fmt"
 	"os"
 
-	"github.com/grpc-ecosystem/go-grpc-middleware/v2/metadata"
 	clipb "github.com/ksusonic/gophkeeper/proto/cli"
 	grpcMetadata "google.golang.org/grpc/metadata"
 
+	"github.com/grpc-ecosystem/go-grpc-middleware/v2/metadata"
 	"github.com/urfave/cli/v2"
 	"google.golang.org/protobuf/proto"
 )
@@ -16,14 +16,14 @@ import (
 type Storage struct {
 	path string
 
-	clipb.Storage
+	*clipb.Storage
 }
 
 func NewStorage(path string, ignoreErrors bool) (*Storage, error) {
-	storage := &Storage{path: path}
+	storage := &Storage{path: path, Storage: &clipb.Storage{}}
 	file, _ := os.ReadFile(path)
 	if file != nil {
-		err := proto.Unmarshal(file, &storage.Storage)
+		err := proto.Unmarshal(file, storage.Storage)
 		if err != nil {
 			if ignoreErrors {
 				return storage, nil
@@ -36,7 +36,7 @@ func NewStorage(path string, ignoreErrors bool) (*Storage, error) {
 }
 
 func (s *Storage) Save() error {
-	marshal, err := proto.Marshal(&s.Storage)
+	marshal, err := proto.Marshal(s.Storage)
 	if err != nil {
 		return err
 	}

@@ -17,6 +17,7 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
+// Storage interface for managins secrets in storage
 type Storage interface {
 	SetSecret(ctx context.Context, secret *models.Secret) error
 	GetSecret(ctx context.Context, userID, name string) (*models.Secret, error)
@@ -25,6 +26,7 @@ type Storage interface {
 	RemoveSecret(ctx context.Context, userID, name string) (bool, error)
 }
 
+// Controller for secrets
 type Controller struct {
 	logger  logging.Logger
 	storage Storage
@@ -44,6 +46,7 @@ func NewController(cfg config.SecretsConfig, storage Storage, logger logging.Log
 	}, nil
 }
 
+// SetSecret creates secret or updates curretnly existing
 func (c *Controller) SetSecret(ctx context.Context, claims *models.UserClaims, secret *datapb.Secret) (*servicepb.SetSecretResponse, error) {
 	existingSecret, err := c.storage.GetSecret(ctx, claims.UserID, secret.GetName())
 	if err != nil {
@@ -91,6 +94,7 @@ func (c *Controller) SetSecret(ctx context.Context, claims *models.UserClaims, s
 	}
 }
 
+// GetSecret gets secret from storage or returns error NotFound
 func (c *Controller) GetSecret(ctx context.Context, claims *models.UserClaims, name string) (*servicepb.GetSecretResponse, error) {
 	secret, err := c.storage.GetSecret(ctx, claims.UserID, name)
 	if err != nil {
@@ -111,6 +115,7 @@ func (c *Controller) GetSecret(ctx context.Context, claims *models.UserClaims, n
 	}, nil
 }
 
+// GetAllSecrets returns all secrets of user
 func (c *Controller) GetAllSecrets(ctx context.Context, claims *models.UserClaims) (*servicepb.GetAllSecretsResponse, error) {
 	secrets, err := c.storage.GetAllSecrets(ctx, claims.UserID)
 	if err != nil {
@@ -137,6 +142,7 @@ func (c *Controller) GetAllSecrets(ctx context.Context, claims *models.UserClaim
 	}, nil
 }
 
+// RemoveSecret removes secret by name
 func (c *Controller) RemoveSecret(ctx context.Context, claims *models.UserClaims, name string) (*servicepb.RemoveSecretResponse, error) {
 	found, err := c.storage.RemoveSecret(ctx, claims.UserID, name)
 	if err != nil {

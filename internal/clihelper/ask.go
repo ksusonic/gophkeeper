@@ -1,4 +1,4 @@
-package cliclient
+package clihelper
 
 import (
 	"encoding/json"
@@ -8,6 +8,7 @@ import (
 	"github.com/tcnksm/go-input"
 )
 
+// yesNoValidator - waits for 'y'/'Y'/'n'/'N'
 func yesNoValidator(rawString string) error {
 	if s := strings.TrimSpace(strings.ToLower(rawString)); s == "y" || s == "n" {
 		return nil
